@@ -16,18 +16,18 @@ from django.views.generic import FormView
 
 from pretalx.common.views.mixins import PermissionRequired
 
-from .api import YouTubeLinkWriteSerializer
-from .forms import FileUploadForm, YouTubeUrlForm
-from .models import YouTubeLink, YouTubeWebhookSettings, generate_webhook_token
+from .api import PeertubeLinkWriteSerializer
+from .forms import FileUploadForm, PeertubeUrlForm
+from .models import PeertubeLink, PeertubeWebhookSettings, generate_webhook_token
 from .utils import extract_video_id
 
 logger = logging.getLogger(__name__)
 
 
-class YouTubeSettings(PermissionRequired, FormView):
+class PeertubeSettings(PermissionRequired, FormView):
     permission_required = "event.update_event"
-    template_name = "pretalx_youtube/settings.html"
-    form_class = YouTubeUrlForm
+    template_name = "pretalx_peertube/settings.html"
+    form_class = PeertubeUrlForm
 
     def get_success_url(self):
         return self.request.path
@@ -43,13 +43,13 @@ class YouTubeSettings(PermissionRequired, FormView):
     def get_context_data(self, *args, **kwargs):
         ctx = super().get_context_data(*args, **kwargs)
         ctx["file_form"] = FileUploadForm()
-        webhook_settings, _created = YouTubeWebhookSettings.objects.get_or_create(
+        webhook_settings, _created = PeertubeWebhookSettings.objects.get_or_create(
             event=self.request.event
         )
         ctx["webhook_settings"] = webhook_settings
         ctx["webhook_url"] = self.request.build_absolute_uri(
             reverse(
-                "plugins:pretalx_youtube:c3voc_webhook",
+                "plugins:pretalx_peertube:c3voc_webhook",
                 kwargs={"event": self.request.event.slug},
             )
         )
@@ -74,7 +74,7 @@ class YouTubeSettings(PermissionRequired, FormView):
             return self.get(self.request)
 
         for row in data:
-            serializer = YouTubeLinkWriteSerializer(
+            serializer = PeertubeLinkWriteSerializer(
                 data=row, context={"request": self.request}
             )
             if not serializer.is_valid():
@@ -85,11 +85,11 @@ class YouTubeSettings(PermissionRequired, FormView):
                 return self.get(self.request)
             serializer.save()
 
-        messages.success(self.request, _("The YouTube URLs were updated."))
+        messages.success(self.request, _("The Peertube URLs were updated."))
         return self.get(self.request)
 
     def handle_rotate_token(self):
-        webhook_settings, _created = YouTubeWebhookSettings.objects.get_or_create(
+        webhook_settings, _created = PeertubeWebhookSettings.objects.get_or_create(
             event=self.request.event
         )
         webhook_settings.token = generate_webhook_token()
@@ -110,7 +110,7 @@ class YouTubeSettings(PermissionRequired, FormView):
             messages.error(self.request, _("Please fix the errors below."))
             return self.get(self.request, *args, **kwargs)
         form.save()
-        messages.success(self.request, _("The YouTube URLs were updated."))
+        messages.success(self.request, _("The Peertube URLs were updated."))
         return super().get(self.request, *args, **kwargs)
 
 
@@ -187,7 +187,7 @@ class C3VOCWebhookView(View):
     http_method_names = ["post"]
 
     def post(self, request, event):
-        webhook_settings = YouTubeWebhookSettings.objects.filter(
+        webhook_settings = PeertubeWebhookSettings.objects.filter(
             event=request.event
         ).first()
         if not webhook_settings or not webhook_settings.token:
@@ -206,34 +206,34 @@ class C3VOCWebhookView(View):
         if not isinstance(payload, dict):
             return HttpResponseBadRequest("invalid payload")
 
-        youtube = payload.get("youtube") or {}
-        if not youtube.get("enabled"):
+        peertube = payload.get("peertube") or {}
+        if not peertube.get("enabled"):
             # Nothing for us to do — acknowledge so voctopublish does not retry.
             return HttpResponse(status=204)
-        urls = youtube.get("urls") or []
+        urls = peertube.get("urls") or []
         if not isinstance(urls, list) or not urls:
-            return HttpResponseBadRequest("no youtube urls")
+            return HttpResponseBadRequest("no peertube urls")
 
-        video_id = None
+        valid_url = None
         for url in urls:
             if not isinstance(url, str):
                 continue
-            video_id = extract_video_id(url)
-            if video_id:
+            if extract_video_id(url):
+                valid_url = url
                 break
-        if not video_id:
-            return HttpResponseBadRequest("no valid youtube url")
+        if not valid_url:
+            return HttpResponseBadRequest("no valid peertube url")
 
         submission = _find_submission(request.event, payload)
         if not submission:
             return HttpResponse(status=404)
-        YouTubeLink.objects.update_or_create(
-            submission=submission, defaults={"video_id": video_id}
+        PeertubeLink.objects.update_or_create(
+            submission=submission, defaults={"link": valid_url}
         )
 
         logger.info(
-            "c3voc webhook: set YouTube video %s for submission %s (event %s)",
-            video_id,
+            "c3voc webhook: set Peertube link %s for submission %s (event %s)",
+            valid_url,
             submission.code,
             request.event.slug,
         )

@@ -14,7 +14,7 @@ from pretalx.schedule.domain.release import freeze_schedule
 from pretalx.schedule.models import Room, TalkSlot
 from pretalx.submission.models import Submission, SubmissionType
 
-from pretalx_youtube.models import YouTubeLink
+from pretalx_peertube.models import PeertubeLink
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -53,7 +53,7 @@ def event(organiser):
             organiser=organiser,
         )
         initialise_event(event)
-        enable_plugin(event, "pretalx_youtube")
+        enable_plugin(event, "pretalx_peertube")
         event.save()
         for team in organiser.teams.all():
             team.limit_events.add(event)
@@ -188,7 +188,7 @@ def slot(confirmed_submission, room, schedule):
 
 
 @pytest.fixture
-def youtube_link(confirmed_submission):
-    return YouTubeLink.objects.create(
-        submission=confirmed_submission, video_id="dQw4w9WgXcQ"
+def peertube_link(confirmed_submission):
+    return PeertubeLink.objects.create(
+        submission=confirmed_submission, link="https://peertube.com/watch?v=dQw4w9WgXcQ"
     )

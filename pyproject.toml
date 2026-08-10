@@ -1,7 +1,7 @@
 [project]
-name = "pretalx-youtube"
+name = "pretalx-peertube"
 dynamic = ["version"]
-description = "Show YouTube videos embedded on talk pages. Set URLs manually or via API."
+description = "Show Peertube videos embedded on talk pages. Set URLs manually or via API."
 readme = "README.rst"
 license = {text = "Apache Software License"}
 keywords = ["pretalx"]
@@ -25,11 +25,11 @@ dev = [
 ]
 
 [project.urls]
-homepage = "https://github.com/pretalx/pretalx-youtube"
-repository = "https://github.com/pretalx/pretalx-youtube.git"
+homepage = "https://github.com/pretalx/pretalx-peertube"
+repository = "https://github.com/pretalx/pretalx-peertube.git"
 
 [project.entry-points."pretalx.plugin"]
-pretalx_youtube = "pretalx_youtube:PretalxPluginMeta"
+pretalx_peertube = "pretalx_peertube:PretalxPluginMeta"
 
 [build-system]
 build-backend = "setuptools.build_meta"
@@ -39,7 +39,7 @@ requires = ["setuptools"]
 include-package-data = true
 
 [tool.setuptools.dynamic]
-version = {attr = "pretalx_youtube.__version__"}
+version = {attr = "pretalx_peertube.__version__"}
 
 [tool.setuptools.packages.find]
 include = ["pretalx*"]
@@ -51,12 +51,12 @@ ignore = [".*", "tests/*", "justfile"]
 DJANGO_SETTINGS_MODULE = "pretalx.common.settings.test_settings"
 django_find_project = false
 testpaths = "tests"
-addopts = "--cov=pretalx_youtube --cov-report=term-missing:skip-covered --cov-config=pyproject.toml"
+addopts = "--cov=pretalx_peertube --cov-report=term-missing:skip-covered --cov-config=pyproject.toml"
 
 [tool.coverage.run]
 branch = true
 relative_files = true
-source = ["pretalx_youtube"]
+source = ["pretalx_peertube"]
 omit = ["*/migrations/*", "*/urls.py", "*/tests/*"]
 
 [tool.coverage.report]

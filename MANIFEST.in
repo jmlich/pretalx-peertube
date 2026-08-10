@@ -1,8 +1,8 @@
-recursive-include pretalx_youtube/static *
-recursive-include pretalx_youtube/templates *
-exclude pretalx_youtube/locale/django.pot
-recursive-include pretalx_youtube/locale *
-recursive-include pretalx_youtube *.py
+recursive-include pretalx_peertube/static *
+recursive-include pretalx_peertube/templates *
+exclude pretalx_peertube/locale/django.pot
+recursive-include pretalx_peertube/locale *
+recursive-include pretalx_peertube *.py
 recursive-exclude assets *.png
 include justfile
 include uv.lock

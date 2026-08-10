@@ -6,21 +6,21 @@ from pretalx.orga.signals import nav_event_settings
 
 
 @receiver(register_recording_provider)
-def youtube_provider(sender, **kwargs):
-    from .recording import YouTubeProvider  # noqa: PLC0415
+def peertube_provider(sender, **kwargs):
+    from .recording import PeertubeProvider  # noqa: PLC0415
 
-    return YouTubeProvider(sender)
+    return PeertubeProvider(sender)
 
 
 @receiver(nav_event_settings)
-def youtube_settings(sender, request, **kwargs):
+def peertube_settings(sender, request, **kwargs):
     return [
         {
-            "label": "YouTube",
+            "label": "Peertube",
             "url": reverse(
-                "plugins:pretalx_youtube:settings", kwargs={"event": request.event.slug}
+                "plugins:pretalx_peertube:settings", kwargs={"event": request.event.slug}
             ),
             "active": request.resolver_match.url_name
-            == "plugins:pretalx_youtube:settings",
+            == "plugins:pretalx_peertube:settings",
         }
     ]

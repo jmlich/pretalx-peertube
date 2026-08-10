@@ -1,13 +1,13 @@
 Youtube integration
 ===================
 
-.. image:: https://img.shields.io/pypi/v/pretalx-youtube.svg
-   :target: https://pypi.org/project/pretalx-youtube/
+.. image:: https://img.shields.io/pypi/v/pretalx-peertube.svg
+   :target: https://pypi.org/project/pretalx-peertube/
    :alt: PyPI version
 
 This is a plugin for `pretalx`_ that provides an integration with Youtube, allowing you to embed recordings on talk pages.
 
-.. image:: https://github.com/pretalx/pretalx-youtube/blob/main/assets/screenshot.png?raw=true
+.. image:: https://github.com/pretalx/pretalx-peertube/blob/main/assets/screenshot.png?raw=true
 
 API
 ---
@@ -15,7 +15,7 @@ API
 Reading data
 ~~~~~~~~~~~~
 
-The Plugin supplies an API at ``/api/events/<event>/p/youtube/`` that returns all configured Youtube URLs:
+The Plugin supplies an API at ``/api/events/<event>/p/peertube/`` that returns all configured Youtube URLs:
 
 .. code:: json
 
@@ -26,19 +26,19 @@ The Plugin supplies an API at ``/api/events/<event>/p/youtube/`` that returns al
        "results": [
            {
                "submission": "DPC6RT",
-               "youtube_link": "https://youtube.com/watch?v=AAAAAB",
+               "peertube_link": "https://peertube.com/watch?v=AAAAAB",
                "video_id": "AAAAAB"
            },
        ]
    }
 
-A detail view for specific submissions is available at ``/api/events/<event>/p/youtube/<code>/``:
+A detail view for specific submissions is available at ``/api/events/<event>/p/peertube/<code>/``:
 
 .. code:: json
 
    {
        "submission": "DPC6RT",
-       "youtube_link": "https://youtube.com/watch?v=AAAAAB",
+       "peertube_link": "https://peertube.com/watch?v=AAAAAB",
        "video_id": "AAAAAB"
    }
 
@@ -52,15 +52,15 @@ existing links if you use ``POST``, so it's safe to just always ``POST`` to the 
 
 You can also **bulk import** data in either JSON or CSV format. The JSON format is the same as the one used by the API,
 and the CSV format is a simple CSV file with a header row containing the fields ``submission`` and ``video_id``. You can
-upload the file to ``/api/events/<event>/p/youtube/import/`` using a ``POST`` request with the file as the body.
+upload the file to ``/api/events/<event>/p/peertube/import/`` using a ``POST`` request with the file as the body.
 (For JSON, you can also instead put the data in the request body.)
 
 
 c3voc publishing webhook
 ------------------------
 
-If you use the c3voc ``voctopublish`` tool to upload recordings to YouTube,
-the plugin can receive the publishing notification and attach the YouTube
+If you use the c3voc ``voctopublish`` tool to upload recordings to Peertube,
+the plugin can receive the publishing notification and attach the Peertube
 link to the matching session automatically.
 
 Go to the plugin's settings page in the organiser backend to find the
@@ -69,7 +69,7 @@ configure the webhook URL and set the webhook *password* (``webhook_pass``)
 to the token — leave the username empty so voctopublish uses the
 ``Authorization`` header. Always use HTTPS to protect the token in transit.
 
-The token is a shared secret. Anyone who knows it can set YouTube links on
+The token is a shared secret. Anyone who knows it can set Peertube links on
 your sessions, so keep it private. Use the *Generate new token* button in
 the settings to rotate it if you believe it has leaked.
 
@@ -80,7 +80,7 @@ Installation
 Install the plugin with pip, in the same environment as your pretalx
 installation::
 
-    (env)$ python -m pip install pretalx-youtube
+    (env)$ python -m pip install pretalx-peertube
 
 Afterwards, run ``migrate`` and ``rebuild`` and restart your pretalx services,
 just like after any pretalx update (see `performing updates`_ in the
@@ -93,7 +93,7 @@ Development setup
 
 1. Make sure that you have a working `pretalx development setup`_.
 
-2. Clone this repository, eg to ``local/pretalx-youtube``.
+2. Clone this repository, eg to ``local/pretalx-peertube``.
 
 3. Install the plugin in editable mode: ``uv pip install -e .``
 

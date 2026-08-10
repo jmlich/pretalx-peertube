@@ -7,15 +7,15 @@ from rest_framework.response import Response
 from pretalx.api.permissions import ApiPermission, PluginPermission
 from pretalx.submission.models import Submission
 
-from .models import YouTubeLink
+from .models import PeertubeLink
 from .utils import VIDEO_ID_RE
 
 
-class YouTubeLinkSerializer(serializers.ModelSerializer):
+class PeertubeLinkSerializer(serializers.ModelSerializer):
     submission = serializers.SlugRelatedField(
         slug_field="code", queryset=Submission.objects.none()
     )
-    youtube_link = serializers.SerializerMethodField()
+    peertube_link = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,15 +25,15 @@ class YouTubeLinkSerializer(serializers.ModelSerializer):
             return
         self.event = request.event
 
-    def get_youtube_link(self, obj):
-        return obj.youtube_link
+    def get_peertube_link(self, obj):
+        return obj.peertube_link
 
     class Meta:
-        model = YouTubeLink
-        fields = ["submission", "youtube_link", "video_id"]
+        model = PeertubeLink
+        fields = ["submission", "peertube_link", "link"]
 
 
-class YouTubeLinkWriteSerializer(YouTubeLinkSerializer):
+class PeertubeLinkWriteSerializer(PeertubeLinkSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not getattr(self, "event", None):
@@ -46,13 +46,10 @@ class YouTubeLinkWriteSerializer(YouTubeLinkSerializer):
         else:
             self.fields["submission"].queryset = self.event.submissions.all()
 
-    def validate_video_id(self, value):
-        # Strip out any URL parts
-        if "/" in value:
-            parts = [p for p in value.split("/") if p]
-            value = parts[-1]
-        if value and not VIDEO_ID_RE.match(value):
-            raise serializers.ValidationError("This is not a valid YouTube video id.")
+    def validate_link(self, value):
+        from .utils import extract_video_id
+        if not extract_video_id(value):
+            raise serializers.ValidationError("This is not a valid Peertube URL.")
         return value
 
     def save(self, **kwargs):
@@ -60,20 +57,20 @@ class YouTubeLinkWriteSerializer(YouTubeLinkSerializer):
             # We need to check if there is already a link for this submission
             # as we don't want to create duplicates
             # (And save() logic is too complex to just override it entirely)
-            self.instance = YouTubeLink.objects.filter(
+            self.instance = PeertubeLink.objects.filter(
                 submission=self.validated_data["submission"]
             ).first()
         return super().save(**kwargs)
 
-    class Meta(YouTubeLinkSerializer.Meta):
-        fields = ["submission", "video_id"]
+    class Meta(PeertubeLinkSerializer.Meta):
+        fields = ["submission", "link"]
 
 
-class YouTubeLinkViewSet(viewsets.ModelViewSet):
-    serializer_class = YouTubeLinkSerializer
-    queryset = YouTubeLink.objects.none()
+class PeertubeLinkViewSet(viewsets.ModelViewSet):
+    serializer_class = PeertubeLinkSerializer
+    queryset = PeertubeLink.objects.none()
     permission_classes = [ApiPermission & PluginPermission]
-    plugin_required = "pretalx_youtube"
+    plugin_required = "pretalx_peertube"
     read_permission_required = "schedule.list_schedule"
     write_permission_required = "event.update_event"
     lookup_field = "submission__code"
@@ -82,15 +79,15 @@ class YouTubeLinkViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
-            return YouTubeLinkWriteSerializer
-        return YouTubeLinkSerializer
+            return PeertubeLinkWriteSerializer
+        return PeertubeLinkSerializer
 
     def get_queryset(self):
         event = self.request.event
         if not event:
-            return YouTubeLink.objects.none()
+            return PeertubeLink.objects.none()
         return (
-            YouTubeLink.objects.filter(submission__event=event)
+            PeertubeLink.objects.filter(submission__event=event)
             .select_related("submission")
             .order_by("submission__code")
         )
@@ -134,7 +131,7 @@ class YouTubeLinkViewSet(viewsets.ModelViewSet):
         # We aren't using many=True because making sure that we are always
         # running get_or_create() is not trivial with many=True
         for row in data:
-            serializer = YouTubeLinkWriteSerializer(
+            serializer = PeertubeLinkWriteSerializer(
                 data=row, context={"request": request}
             )
             serializer.is_valid(raise_exception=True)

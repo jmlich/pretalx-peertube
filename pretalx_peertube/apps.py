@@ -5,20 +5,20 @@ from . import __version__
 
 
 class PluginApp(AppConfig):
-    name = "pretalx_youtube"
-    verbose_name = "YouTube integration"
+    name = "pretalx_peertube"
+    verbose_name = "Peertube integration"
 
     class PretalxPluginMeta:
-        name = gettext_lazy("YouTube integration")
+        name = gettext_lazy("Peertube integration")
         author = "Tobias Kunze"
         description = gettext_lazy(
-            "Show YouTube videos embedded on talk pages. Set URLs manually or via API."
+            "Show Peertube videos embedded on talk pages. Set URLs manually or via API."
         )
         visible = True
         version = __version__
         category = "RECORDING"
         settings_links = [
-            (gettext_lazy("Settings"), "plugins:pretalx_youtube:settings", {})
+            (gettext_lazy("Settings"), "plugins:pretalx_peertube:settings", {})
         ]
 
     def ready(self):

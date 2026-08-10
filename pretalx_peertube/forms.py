@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from pretalx.common.forms.renderers import InlineFormRenderer
 from pretalx.common.forms.widgets import ClearableBasenameFileInput
 
-from .models import YouTubeLink
+from .models import PeertubeLink
 from .utils import extract_video_id
 
 
@@ -16,7 +16,7 @@ class FileUploadForm(forms.Form):
     file = forms.FileField(label=_("File"), widget=ClearableBasenameFileInput)
 
 
-class YouTubeUrlForm(forms.Form):
+class PeertubeUrlForm(forms.Form):
     def __init__(self, *args, event, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -29,21 +29,21 @@ class YouTubeUrlForm(forms.Form):
             .select_related("submission", "submission__event")
             .order_by("start")
         )
-        youtube_data = {
-            v.submission.code: v.youtube_link
-            for v in YouTubeLink.objects.filter(submission__event=event).select_related(
-                "submission"
-            )
+        peertube_data = {
+            v.submission.code: v.peertube_link
+            for v in PeertubeLink.objects.filter(
+                submission__event=event
+            ).select_related("submission")
         }
         s = _("Go to video.")
         p = _("Go to talk page.")
         for talk in self.talks:
-            link = youtube_data.get(talk.submission.code)
+            link = peertube_data.get(talk.submission.code)
             help_text = f'<a href="{talk.submission.urls.public.full()}" target="_blank">{p}</a>'
             if link:
                 help_text += f' | <a href="{link}" target="_blank">{s}</a>'
 
-            self.fields[f"video_id_{talk.submission.code}"] = forms.URLField(
+            self.fields[f"link_{talk.submission.code}"] = forms.URLField(
                 required=False,
                 label=talk.submission.title,
                 widget=forms.TextInput(attrs={"placeholder": ""}),
@@ -59,17 +59,17 @@ class YouTubeUrlForm(forms.Form):
                 continue
             video_id = extract_video_id(value)
             if not video_id:
-                self.add_error(key, _("Please provide a YouTube URL!"))
+                self.add_error(key, _("Please provide a valid Peertube URL!"))
             else:
-                result[key] = video_id
+                result[key] = value
         return result
 
     def save(self):
         for talk in self.talks:
-            video_id = self.cleaned_data.get(f"video_id_{talk.submission.code}")
-            if video_id:
-                YouTubeLink.objects.update_or_create(
-                    submission=talk.submission, defaults={"video_id": video_id}
+            link = self.cleaned_data.get(f"link_{talk.submission.code}")
+            if link:
+                PeertubeLink.objects.update_or_create(
+                    submission=talk.submission, defaults={"link": link}
                 )
             else:
-                YouTubeLink.objects.filter(submission=talk.submission).delete()
+                PeertubeLink.objects.filter(submission=talk.submission).delete()

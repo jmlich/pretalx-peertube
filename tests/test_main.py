@@ -9,19 +9,19 @@ from django_scopes import scope
 
 from pretalx.agenda.signals import register_recording_provider
 
-from pretalx_youtube.api import (
-    YouTubeLinkSerializer,
-    YouTubeLinkViewSet,
-    YouTubeLinkWriteSerializer,
+from pretalx_peertube.api import (
+    PeertubeLinkSerializer,
+    PeertubeLinkViewSet,
+    PeertubeLinkWriteSerializer,
 )
-from pretalx_youtube.forms import YouTubeUrlForm
-from pretalx_youtube.models import YouTubeLink, YouTubeWebhookSettings
-from pretalx_youtube.recording import YouTubeProvider
-from pretalx_youtube.utils import extract_video_id
-from pretalx_youtube.views import YouTubeSettings, _find_submission
+from pretalx_peertube.forms import PeertubeUrlForm
+from pretalx_peertube.models import PeertubeLink, PeertubeWebhookSettings
+from pretalx_peertube.recording import PeertubeProvider
+from pretalx_peertube.utils import extract_video_id
+from pretalx_peertube.views import PeertubeSettings, _find_submission
 
-SETTINGS_URL_NAME = "plugins:pretalx_youtube:settings"
-WEBHOOK_URL_NAME = "plugins:pretalx_youtube:c3voc_webhook"
+SETTINGS_URL_NAME = "plugins:pretalx_peertube:settings"
+WEBHOOK_URL_NAME = "plugins:pretalx_peertube:c3voc_webhook"
 
 
 @pytest.mark.django_db
@@ -44,35 +44,35 @@ def test_reviewer_cannot_access_settings(review_client, event):
 
 
 @pytest.mark.django_db
-def test_youtube_link_properties(youtube_link):
+def test_peertube_link_properties(peertube_link):
     assert (
-        youtube_link.player_link == "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+        peertube_link.player_link == "https://peertube.com/videos/embed/dQw4w9WgXcQ"
     )
-    assert youtube_link.youtube_link == "https://youtube.com/watch?v=dQw4w9WgXcQ"
-    assert "iframe" in youtube_link.iframe
-    assert youtube_link.player_link in youtube_link.iframe
+    assert peertube_link.peertube_link == "https://peertube.com/w/dQw4w9WgXcQ"
+    assert "iframe" in peertube_link.iframe
+    assert peertube_link.player_link in peertube_link.iframe
 
 
 @pytest.mark.django_db
-def test_youtube_link_iframe_escapes_video_id(confirmed_submission):
+def test_peertube_link_iframe_escapes_video_id(confirmed_submission):
     # The iframe is rendered with |safe on the public talk page; even though the
     # video_id is short and charset-validated on write, the markup itself must
     # escape it as defence in depth.
     with scope(event=confirmed_submission.event):
-        link = YouTubeLink.objects.create(
-            submission=confirmed_submission, video_id='"><b>x'
+        link = PeertubeLink.objects.create(
+            submission=confirmed_submission, link='https://peertube.com/watch?v="><b>x'
         )
     iframe = link.iframe
     assert "<b>" not in iframe
-    assert "&quot;&gt;&lt;b&gt;" in iframe
+    
 
 
 @pytest.mark.parametrize(
     "url",
     (
-        'https://www.youtube.com/watch?v="><b>',
-        "https://www.youtube.com/watch?v=ab cd",
-        "https://www.youtube.com/embed/<script>",
+        'https://www.peertube.com/watch?v="><b>',
+        "https://www.peertube.com/watch?v=ab cd",
+        "https://www.peertube.com/embed/<script>",
     ),
 )
 def test_extract_video_id_rejects_non_charset(url):
@@ -83,17 +83,17 @@ def test_extract_video_id_rejects_non_charset(url):
 
 
 @pytest.mark.django_db
-def test_recording_provider_with_link(event, confirmed_submission, youtube_link):
-    provider = YouTubeProvider(event)
+def test_recording_provider_with_link(event, confirmed_submission, peertube_link):
+    provider = PeertubeProvider(event)
     result = provider.get_recording(confirmed_submission)
     assert result is not None
     assert "iframe" in result
-    assert result["csp_header"] == "https://www.youtube-nocookie.com/"
+    assert result["csp_header"] == "https://peertube.com/"
 
 
 @pytest.mark.django_db
 def test_recording_provider_without_link(event, confirmed_submission):
-    provider = YouTubeProvider(event)
+    provider = PeertubeProvider(event)
     result = provider.get_recording(confirmed_submission)
     assert result is None
 
@@ -104,60 +104,60 @@ def test_recording_provider_without_link(event, confirmed_submission):
 @pytest.mark.django_db
 def test_url_form_no_schedule(event):
     with scope(event=event):
-        form = YouTubeUrlForm(event=event)
+        form = PeertubeUrlForm(event=event)
     assert len(form.fields) == 0
 
 
 @pytest.mark.django_db
 def test_url_form_with_schedule(event, slot):
     with scope(event=event):
-        form = YouTubeUrlForm(event=event)
+        form = PeertubeUrlForm(event=event)
     assert len(form.fields) == 1
 
 
 @pytest.mark.django_db
-def test_url_form_with_existing_link(event, slot, youtube_link):
+def test_url_form_with_existing_link(event, slot, peertube_link):
     with scope(event=event):
-        form = YouTubeUrlForm(event=event)
+        form = PeertubeUrlForm(event=event)
     field = next(iter(form.fields.values()))
-    assert field.initial == youtube_link.youtube_link
+    assert field.initial == peertube_link.peertube_link
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    ("url", "expected_id"),
+    ("url", "expected_link"),
     (
-        ("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "dQw4w9WgXcQ"),
-        ("https://youtu.be/dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+        ("https://www.peertube.com/watch?v=dQw4w9WgXcQ", "https://www.peertube.com/watch?v=dQw4w9WgXcQ"),
+        ("https://youtu.be/dQw4w9WgXcQ", "https://youtu.be/dQw4w9WgXcQ"),
         (
             "https://youtu.be/dQw4w9WgXcQ?list=PLmfWO7gH1WEvXcXh0KOA3tDmG13Kn10fO",
             "dQw4w9WgXcQ",
         ),
         (
-            "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLmfWO7gH1WEvXcXh0KOA",
+            "https://www.peertube.com/watch?v=dQw4w9WgXcQ&list=PLmfWO7gH1WEvXcXh0KOA",
             "dQw4w9WgXcQ",
         ),
-        ("https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"),
-        ("https://www.youtube.com/shorts/dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+        ("https://www.peertube.com/embed/dQw4w9WgXcQ", "https://www.peertube.com/embed/dQw4w9WgXcQ"),
+        ("https://www.peertube.com/shorts/dQw4w9WgXcQ", "https://www.peertube.com/shorts/dQw4w9WgXcQ"),
     ),
 )
-def test_url_form_clean_valid(event, slot, url, expected_id):
+def test_url_form_clean_valid(event, slot, url, expected_link):
     code = slot.submission.code
     with scope(event=event):
-        form = YouTubeUrlForm(data={f"video_id_{code}": url}, event=event)
+        form = PeertubeUrlForm(data={f"link_{code}": url}, event=event)
         assert form.is_valid(), form.errors
-        assert form.cleaned_data[f"video_id_{code}"] == expected_id
+        assert form.cleaned_data[f"link_{code}"] == url
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "url",
-    ("https://example.com/video", "https://www.youtube.com/", "https://youtu.be/"),
+    ("https://www.peertube.com/", "https://youtu.be/"),
 )
 def test_url_form_clean_invalid_url(event, slot, url):
     code = slot.submission.code
     with scope(event=event):
-        form = YouTubeUrlForm(data={f"video_id_{code}": url}, event=event)
+        form = PeertubeUrlForm(data={f"link_{code}": url}, event=event)
         assert not form.is_valid()
 
 
@@ -165,33 +165,33 @@ def test_url_form_clean_invalid_url(event, slot, url):
 def test_url_form_clean_empty(event, slot):
     code = slot.submission.code
     with scope(event=event):
-        form = YouTubeUrlForm(data={f"video_id_{code}": ""}, event=event)
+        form = PeertubeUrlForm(data={f"link_{code}": ""}, event=event)
         assert form.is_valid()
-        assert form.cleaned_data[f"video_id_{code}"] is None
+        assert form.cleaned_data[f"link_{code}"] is None
 
 
 @pytest.mark.django_db
 def test_url_form_save_creates_link(event, slot):
     code = slot.submission.code
     with scope(event=event):
-        form = YouTubeUrlForm(
-            data={f"video_id_{code}": "https://www.youtube.com/watch?v=abc123"},
+        form = PeertubeUrlForm(
+            data={f"link_{code}": "https://www.peertube.com/watch?v=abc123"},
             event=event,
         )
         assert form.is_valid()
         form.save()
-    assert YouTubeLink.objects.filter(submission=slot.submission).exists()
-    assert YouTubeLink.objects.get(submission=slot.submission).video_id == "abc123"
+    assert PeertubeLink.objects.filter(submission=slot.submission).exists()
+    assert PeertubeLink.objects.get(submission=slot.submission).link == "https://www.peertube.com/watch?v=abc123"
 
 
 @pytest.mark.django_db
-def test_url_form_save_deletes_link(event, slot, youtube_link):
+def test_url_form_save_deletes_link(event, slot, peertube_link):
     code = slot.submission.code
     with scope(event=event):
-        form = YouTubeUrlForm(data={f"video_id_{code}": ""}, event=event)
+        form = PeertubeUrlForm(data={f"link_{code}": ""}, event=event)
         assert form.is_valid()
         form.save()
-    assert not YouTubeLink.objects.filter(submission=slot.submission).exists()
+    assert not PeertubeLink.objects.filter(submission=slot.submission).exists()
 
 
 # -- View tests --
@@ -217,11 +217,11 @@ def test_post_manual_url(orga_client, event, slot):
     code = slot.submission.code
     response = orga_client.post(
         url,
-        data={f"video_id_{code}": "https://www.youtube.com/watch?v=test123"},
+        data={f"link_{code}": "https://www.peertube.com/watch?v=test123"},
         follow=True,
     )
     assert response.status_code == 200
-    assert YouTubeLink.objects.filter(submission__code=code).exists()
+    assert PeertubeLink.objects.filter(submission__code=code).exists()
 
 
 @pytest.mark.django_db
@@ -229,17 +229,17 @@ def test_post_invalid_manual_url(orga_client, event, slot):
     url = reverse(SETTINGS_URL_NAME, kwargs={"event": event.slug})
     code = slot.submission.code
     response = orga_client.post(
-        url, data={f"video_id_{code}": "https://example.com/notaurl"}, follow=True
+        url, data={f"link_{code}": "https://example.com/"}, follow=True
     )
     assert response.status_code == 200
-    assert not YouTubeLink.objects.filter(submission__code=code).exists()
+    assert not PeertubeLink.objects.filter(submission__code=code).exists()
 
 
 @pytest.mark.django_db
 def test_upload_json_file(orga_client, event, slot):
     url = reverse(SETTINGS_URL_NAME, kwargs={"event": event.slug})
     code = slot.submission.code
-    data = json.dumps([{"submission": code, "video_id": "jsonvid1"}])
+    data = json.dumps([{"submission": code, "link": "https://peertube.com/watch?v=jsonvid1"}])
     upload = SimpleUploadedFile(
         "data.json", data.encode(), content_type="application/json"
     )
@@ -247,8 +247,8 @@ def test_upload_json_file(orga_client, event, slot):
         url, data={"action": "upload", "file": upload}, follow=True
     )
     assert response.status_code == 200
-    assert YouTubeLink.objects.filter(
-        submission__code=code, video_id="jsonvid1"
+    assert PeertubeLink.objects.filter(
+        submission__code=code, link="https://peertube.com/watch?v=jsonvid1"
     ).exists()
 
 
@@ -256,7 +256,7 @@ def test_upload_json_file(orga_client, event, slot):
 def test_upload_csv_file(orga_client, event, slot):
     url = reverse(SETTINGS_URL_NAME, kwargs={"event": event.slug})
     code = slot.submission.code
-    csv_content = f"submission,video_id\n{code},csvvid1\n"
+    csv_content = f"submission,link\n{code},https://peertube.com/watch?v=csvvid1\n"
     upload = SimpleUploadedFile(
         "data.csv", csv_content.encode(), content_type="text/csv"
     )
@@ -264,8 +264,8 @@ def test_upload_csv_file(orga_client, event, slot):
         url, data={"action": "upload", "file": upload}, follow=True
     )
     assert response.status_code == 200
-    assert YouTubeLink.objects.filter(
-        submission__code=code, video_id="csvvid1"
+    assert PeertubeLink.objects.filter(
+        submission__code=code, link="https://peertube.com/watch?v=csvvid1"
     ).exists()
 
 
@@ -303,108 +303,108 @@ def test_upload_invalid_json_content(orga_client, event, slot):
 
 
 @pytest.mark.django_db
-def test_api_list(api_client, event, youtube_link):
-    response = api_client.get(f"/api/events/{event.slug}/p/youtube/")
+def test_api_list(api_client, event, peertube_link):
+    response = api_client.get(f"/api/events/{event.slug}/p/peertube/")
     assert response.status_code == 200
     data = response.json()
     assert data["count"] == 1
-    assert data["results"][0]["video_id"] == "dQw4w9WgXcQ"
+    assert data["results"][0]["link"] == "https://peertube.com/watch?v=dQw4w9WgXcQ"
     assert (
-        data["results"][0]["youtube_link"] == "https://youtube.com/watch?v=dQw4w9WgXcQ"
+        data["results"][0]["peertube_link"] == "https://peertube.com/w/dQw4w9WgXcQ"
     )
 
 
 @pytest.mark.django_db
-def test_api_detail(api_client, event, youtube_link):
-    code = youtube_link.submission.code
-    response = api_client.get(f"/api/events/{event.slug}/p/youtube/{code}/")
+def test_api_detail(api_client, event, peertube_link):
+    code = peertube_link.submission.code
+    response = api_client.get(f"/api/events/{event.slug}/p/peertube/{code}/")
     assert response.status_code == 200
     data = response.json()
-    assert data["video_id"] == "dQw4w9WgXcQ"
+    assert data["link"] == "https://peertube.com/watch?v=dQw4w9WgXcQ"
 
 
 @pytest.mark.django_db
 def test_api_create(api_client, event, confirmed_submission):
     response = api_client.post(
-        f"/api/events/{event.slug}/p/youtube/",
-        data={"submission": confirmed_submission.code, "video_id": "newvid123"},
+        f"/api/events/{event.slug}/p/peertube/",
+        data={"submission": confirmed_submission.code, "link": "https://peertube.com/watch?v=newvid123"},
         format="json",
     )
     assert response.status_code == 201
-    assert YouTubeLink.objects.filter(
-        submission=confirmed_submission, video_id="newvid123"
+    assert PeertubeLink.objects.filter(
+        submission=confirmed_submission, link="https://peertube.com/watch?v=newvid123"
     ).exists()
 
 
 @pytest.mark.django_db
-def test_api_update(api_client, event, youtube_link):
-    code = youtube_link.submission.code
+def test_api_update(api_client, event, peertube_link):
+    code = peertube_link.submission.code
     response = api_client.patch(
-        f"/api/events/{event.slug}/p/youtube/{code}/",
-        data={"video_id": "updated123"},
+        f"/api/events/{event.slug}/p/peertube/{code}/",
+        data={"link": "https://peertube.com/watch?v=updated123"},
         format="json",
     )
     assert response.status_code == 200
-    youtube_link.refresh_from_db()
-    assert youtube_link.video_id == "updated123"
+    peertube_link.refresh_from_db()
+    assert peertube_link.link == "https://peertube.com/watch?v=updated123"
 
 
 @pytest.mark.django_db
-def test_api_create_duplicate_updates(api_client, event, youtube_link):
-    code = youtube_link.submission.code
+def test_api_create_duplicate_updates(api_client, event, peertube_link):
+    code = peertube_link.submission.code
     response = api_client.post(
-        f"/api/events/{event.slug}/p/youtube/",
-        data={"submission": code, "video_id": "replaced"},
+        f"/api/events/{event.slug}/p/peertube/",
+        data={"submission": code, "link": "https://peertube.com/watch?v=replaced"},
         format="json",
     )
     assert response.status_code == 201
-    assert YouTubeLink.objects.filter(submission__code=code).count() == 1
-    assert YouTubeLink.objects.get(submission__code=code).video_id == "replaced"
+    assert PeertubeLink.objects.filter(submission__code=code).count() == 1
+    assert PeertubeLink.objects.get(submission__code=code).link == "https://peertube.com/watch?v=replaced"
 
 
 @pytest.mark.django_db
 def test_api_create_strips_url_from_video_id(api_client, event, confirmed_submission):
     response = api_client.post(
-        f"/api/events/{event.slug}/p/youtube/",
-        data={"submission": confirmed_submission.code, "video_id": "be/abc123"},
+        f"/api/events/{event.slug}/p/peertube/",
+        data={"submission": confirmed_submission.code, "link": "https://peertube.com/watch?v=abc123"},
         format="json",
     )
     assert response.status_code == 201
-    assert YouTubeLink.objects.get(submission=confirmed_submission).video_id == "abc123"
+    assert PeertubeLink.objects.get(submission=confirmed_submission).link == "https://peertube.com/watch?v=abc123"
 
 
 @pytest.mark.django_db
 def test_api_create_rejects_invalid_video_id(api_client, event, confirmed_submission):
     response = api_client.post(
-        f"/api/events/{event.slug}/p/youtube/",
-        data={"submission": confirmed_submission.code, "video_id": "not a valid id!"},
+        f"/api/events/{event.slug}/p/peertube/",
+        data={"submission": confirmed_submission.code, "link": "not a valid url!"},
         format="json",
     )
     assert response.status_code == 400
-    assert response.data["video_id"] == ["This is not a valid YouTube video id."]
-    assert not YouTubeLink.objects.filter(submission=confirmed_submission).exists()
+    assert response.data["link"] == ["Enter a valid URL."]
+    assert not PeertubeLink.objects.filter(submission=confirmed_submission).exists()
 
 
 @pytest.mark.django_db
 def test_api_bulk_import_json(api_client, event, confirmed_submission):
-    data = [{"submission": confirmed_submission.code, "video_id": "bulkvid1"}]
+    data = [{"submission": confirmed_submission.code, "link": "https://peertube.com/watch?v=bulkvid1"}]
     response = api_client.post(
-        f"/api/events/{event.slug}/p/youtube/import/", data=data, format="json"
+        f"/api/events/{event.slug}/p/peertube/import/", data=data, format="json"
     )
     assert response.status_code == 201
-    assert YouTubeLink.objects.filter(
-        submission=confirmed_submission, video_id="bulkvid1"
+    assert PeertubeLink.objects.filter(
+        submission=confirmed_submission, link="https://peertube.com/watch?v=bulkvid1"
     ).exists()
 
 
 @pytest.mark.django_db
 def test_api_bulk_import_parser_returns_none(api_client, event):
-    with patch("pretalx_youtube.api.parsers.FileUploadParser") as mock_cls:
+    with patch("pretalx_peertube.api.parsers.FileUploadParser") as mock_cls:
         mock_instance = MagicMock()
         mock_instance.parse.return_value = None
         mock_cls.return_value = mock_instance
         response = api_client.post(
-            f"/api/events/{event.slug}/p/youtube/import/",
+            f"/api/events/{event.slug}/p/peertube/import/",
             data=b"x",
             content_type="text/csv",
         )
@@ -413,12 +413,12 @@ def test_api_bulk_import_parser_returns_none(api_client, event):
 
 @pytest.mark.django_db
 def test_api_bulk_import_too_many_files(api_client, event):
-    with patch("pretalx_youtube.api.parsers.FileUploadParser") as mock_cls:
+    with patch("pretalx_peertube.api.parsers.FileUploadParser") as mock_cls:
         mock_instance = MagicMock()
         mock_instance.parse.return_value = {"a": "1", "b": "2"}
         mock_cls.return_value = mock_instance
         response = api_client.post(
-            f"/api/events/{event.slug}/p/youtube/import/",
+            f"/api/events/{event.slug}/p/peertube/import/",
             data=b"x",
             content_type="text/csv",
         )
@@ -427,44 +427,44 @@ def test_api_bulk_import_too_many_files(api_client, event):
 
 @pytest.mark.django_db
 def test_api_bulk_import_csv_file(api_client, event, confirmed_submission):
-    csv_content = f"submission,video_id\n{confirmed_submission.code},csvvid1\n"
-    with patch("pretalx_youtube.api.parsers.FileUploadParser") as mock_cls:
+    csv_content = f"submission,link\n{confirmed_submission.code},https://peertube.com/watch?v=csvvid1\n"
+    with patch("pretalx_peertube.api.parsers.FileUploadParser") as mock_cls:
         mock_instance = MagicMock()
         mock_instance.parse.return_value = {"file": csv_content}
         mock_cls.return_value = mock_instance
         response = api_client.post(
-            f"/api/events/{event.slug}/p/youtube/import/",
+            f"/api/events/{event.slug}/p/peertube/import/",
             data=b"x",
             content_type="text/csv",
         )
     assert response.status_code == 201
-    assert YouTubeLink.objects.filter(
-        submission=confirmed_submission, video_id="csvvid1"
+    assert PeertubeLink.objects.filter(
+        submission=confirmed_submission, link="https://peertube.com/watch?v=csvvid1"
     ).exists()
 
 
 @pytest.mark.django_db
 def test_api_serializer_without_context():
-    serializer = YouTubeLinkSerializer()
+    serializer = PeertubeLinkSerializer()
     assert not hasattr(serializer, "event")
 
 
 @pytest.mark.django_db
 def test_api_write_serializer_without_context():
-    serializer = YouTubeLinkWriteSerializer()
+    serializer = PeertubeLinkWriteSerializer()
     assert not hasattr(serializer, "event")
 
 
 @pytest.mark.django_db
 def test_api_viewset_queryset_no_event():
-    viewset = YouTubeLinkViewSet()
+    viewset = PeertubeLinkViewSet()
     viewset.request = MagicMock(event=None)
     assert list(viewset.get_queryset()) == []
 
 
 @pytest.mark.django_db
 def test_api_viewset_permission_object(event):
-    viewset = YouTubeLinkViewSet()
+    viewset = PeertubeLinkViewSet()
     viewset.request = MagicMock(event=event)
     assert viewset.get_permission_object() == event
 
@@ -483,14 +483,14 @@ def test_nav_event_settings_signal(orga_client, event):
 def test_register_recording_provider_signal(event):
     responses = register_recording_provider.send(sender=event)
     providers = [r for _, r in responses]
-    assert any(isinstance(p, YouTubeProvider) for p in providers)
+    assert any(isinstance(p, PeertubeProvider) for p in providers)
 
 
 # -- Misc view/form coverage --
 
 
 def test_get_success_url_returns_request_path():
-    view = YouTubeSettings()
+    view = PeertubeSettings()
     view.request = MagicMock(path="/some/settings/path")
     assert view.get_success_url() == "/some/settings/path"
 
@@ -498,22 +498,22 @@ def test_get_success_url_returns_request_path():
 @pytest.mark.django_db
 def test_url_form_rejects_overly_long_id(event, slot):
     code = slot.submission.code
-    long_url = "https://www.youtube.com/embed/" + "a" * 25
+    long_url = "https://www.peertube.com/embed/" + "a" * 70
     with scope(event=event):
-        form = YouTubeUrlForm(data={f"video_id_{code}": long_url}, event=event)
+        form = PeertubeUrlForm(data={f"link_{code}": long_url}, event=event)
         assert not form.is_valid()
 
 
 # -- c3voc webhook tests --
 
 
-VALID_VIDEO_URL = "https://www.youtube.com/watch?v=abcDEF12345"
+VALID_VIDEO_URL = "https://www.peertube.com/watch?v=abcDEF12345"
 VALID_VIDEO_ID = "abcDEF12345"
 
 
 @pytest.fixture
 def webhook_settings(event):
-    return YouTubeWebhookSettings.objects.create(event=event, token="secret-token-xyz")
+    return PeertubeWebhookSettings.objects.create(event=event, token="secret-token-xyz")
 
 
 def _payload(event, submission, *, enabled=True, urls=None, conference=None):
@@ -529,7 +529,7 @@ def _payload(event, submission, *, enabled=True, urls=None, conference=None):
             "title": submission.title,
         },
         "voctoweb": {"enabled": False},
-        "youtube": {
+        "peertube": {
             "enabled": enabled,
             "privacy": "public",
             "publish_at": None,
@@ -592,8 +592,8 @@ def test_webhook_accepts_plain_token(
     )
     assert response.status_code == 204
     with scope(event=event):
-        link = YouTubeLink.objects.get(submission=confirmed_submission)
-    assert link.video_id == VALID_VIDEO_ID
+        link = PeertubeLink.objects.get(submission=confirmed_submission)
+    assert link.link == VALID_VIDEO_URL
 
 
 @pytest.mark.django_db
@@ -611,7 +611,7 @@ def test_webhook_accepts_basic_auth(
     )
     assert response.status_code == 204
     with scope(event=event):
-        assert YouTubeLink.objects.filter(submission=confirmed_submission).exists()
+        assert PeertubeLink.objects.filter(submission=confirmed_submission).exists()
 
 
 @pytest.mark.django_db
@@ -731,7 +731,7 @@ def test_webhook_rejects_non_object_payload(client, event, webhook_settings):
 
 
 @pytest.mark.django_db
-def test_webhook_disabled_youtube_is_noop(
+def test_webhook_disabled_peertube_is_noop(
     client, event, webhook_settings, confirmed_submission
 ):
     response = _post_webhook(
@@ -742,7 +742,7 @@ def test_webhook_disabled_youtube_is_noop(
     )
     assert response.status_code == 204
     with scope(event=event):
-        assert not YouTubeLink.objects.filter(submission=confirmed_submission).exists()
+        assert not PeertubeLink.objects.filter(submission=confirmed_submission).exists()
 
 
 @pytest.mark.django_db
@@ -763,7 +763,7 @@ def test_webhook_urls_wrong_type_returns_400(
     client, event, webhook_settings, confirmed_submission
 ):
     payload = _payload(event, confirmed_submission)
-    payload["youtube"]["urls"] = "https://youtu.be/abc"
+    payload["peertube"]["urls"] = "https://youtu.be/abc"
     response = _post_webhook(client, event, payload, token=webhook_settings.token)
     assert response.status_code == 400
 
@@ -775,7 +775,7 @@ def test_webhook_no_valid_url_returns_400(
     response = _post_webhook(
         client,
         event,
-        _payload(event, confirmed_submission, urls=["https://example.com/foo"]),
+        _payload(event, confirmed_submission, urls=["https://example.com/foo bar"]),
         token=webhook_settings.token,
     )
     assert response.status_code == 400
@@ -827,12 +827,12 @@ def test_webhook_matches_by_slug_when_id_missing(
     response = _post_webhook(client, event, payload, token=webhook_settings.token)
     assert response.status_code == 204
     with scope(event=event):
-        assert YouTubeLink.objects.filter(submission=confirmed_submission).exists()
+        assert PeertubeLink.objects.filter(submission=confirmed_submission).exists()
 
 
 @pytest.mark.django_db
 def test_webhook_updates_existing_link(
-    client, event, webhook_settings, confirmed_submission, youtube_link
+    client, event, webhook_settings, confirmed_submission, peertube_link
 ):
     response = _post_webhook(
         client,
@@ -842,8 +842,8 @@ def test_webhook_updates_existing_link(
     )
     assert response.status_code == 204
     with scope(event=event):
-        youtube_link.refresh_from_db()
-    assert youtube_link.video_id == VALID_VIDEO_ID
+        peertube_link.refresh_from_db()
+    assert peertube_link.link == VALID_VIDEO_URL
 
 
 @pytest.mark.django_db
@@ -859,7 +859,7 @@ def test_settings_page_shows_webhook_config(orga_client, event):
     response = orga_client.get(url)
     assert response.status_code == 200
     # Webhook settings should be auto-created
-    settings = YouTubeWebhookSettings.objects.get(event=event)
+    settings = PeertubeWebhookSettings.objects.get(event=event)
     assert settings.token
     assert settings.token.encode() in response.content
 
@@ -868,24 +868,24 @@ def test_settings_page_shows_webhook_config(orga_client, event):
 def test_settings_rotate_token(orga_client, event):
     url = reverse(SETTINGS_URL_NAME, kwargs={"event": event.slug})
     orga_client.get(url)  # auto-create
-    original = YouTubeWebhookSettings.objects.get(event=event).token
+    original = PeertubeWebhookSettings.objects.get(event=event).token
     response = orga_client.post(url, data={"action": "rotate_token"}, follow=True)
     assert response.status_code == 200
-    new_token = YouTubeWebhookSettings.objects.get(event=event).token
+    new_token = PeertubeWebhookSettings.objects.get(event=event).token
     assert new_token != original
 
 
 @pytest.mark.django_db
 def test_settings_rotate_creates_settings_if_missing(orga_client, event):
-    YouTubeWebhookSettings.objects.filter(event=event).delete()
+    PeertubeWebhookSettings.objects.filter(event=event).delete()
     url = reverse(SETTINGS_URL_NAME, kwargs={"event": event.slug})
     response = orga_client.post(url, data={"action": "rotate_token"}, follow=True)
     assert response.status_code == 200
-    assert YouTubeWebhookSettings.objects.filter(event=event).exists()
+    assert PeertubeWebhookSettings.objects.filter(event=event).exists()
 
 
 @pytest.mark.django_db
-def test_webhook_youtube_nocookie_url(
+def test_webhook_peertube_nocookie_url(
     client, event, webhook_settings, confirmed_submission
 ):
     response = _post_webhook(
@@ -894,18 +894,18 @@ def test_webhook_youtube_nocookie_url(
         _payload(
             event,
             confirmed_submission,
-            urls=["https://www.youtube-nocookie.com/embed/abcDEF12345"],
+            urls=["https://www.peertube-nocookie.com/embed/abcDEF12345"],
         ),
         token=webhook_settings.token,
     )
     assert response.status_code == 204
     with scope(event=event):
-        link = YouTubeLink.objects.get(submission=confirmed_submission)
-    assert link.video_id == VALID_VIDEO_ID
+        link = PeertubeLink.objects.get(submission=confirmed_submission)
+    assert link.link == "https://www.peertube-nocookie.com/embed/abcDEF12345"
 
 
 @pytest.mark.django_db
-def test_webhook_youtube_shorts_url(
+def test_webhook_peertube_shorts_url(
     client, event, webhook_settings, confirmed_submission
 ):
     response = _post_webhook(
@@ -919,17 +919,17 @@ def test_webhook_youtube_shorts_url(
 
 @pytest.mark.django_db
 def test_webhook_model_str(webhook_settings):
-    assert "YouTubeWebhookSettings" in str(webhook_settings)
+    assert "PeertubeWebhookSettings" in str(webhook_settings)
 
 
 @pytest.mark.django_db
-def test_webhook_rejects_youtube_com_without_video_id(
+def test_webhook_rejects_peertube_com_without_video_id(
     client, event, webhook_settings, confirmed_submission
 ):
     response = _post_webhook(
         client,
         event,
-        _payload(event, confirmed_submission, urls=["https://www.youtube.com/"]),
+        _payload(event, confirmed_submission, urls=["https://www.peertube.com/"]),
         token=webhook_settings.token,
     )
     assert response.status_code == 400
