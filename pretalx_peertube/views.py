@@ -227,9 +227,20 @@ class C3VOCWebhookView(View):
         submission = _find_submission(request.event, payload)
         if not submission:
             return HttpResponse(status=404)
+        old_link = (
+            PeertubeLink.objects.filter(submission=submission)
+            .values_list("link", flat=True)
+            .first()
+        )
         PeertubeLink.objects.update_or_create(
             submission=submission, defaults={"link": valid_url}
         )
+        if old_link != valid_url:
+            # A repeated webhook with the same link is not a change.
+            submission.log_action(
+                "pretalx_peertube.link.update",
+                data={"old_link": old_link, "link": valid_url},
+            )
 
         logger.info(
             "c3voc webhook: set Peertube link %s for submission %s (event %s)",

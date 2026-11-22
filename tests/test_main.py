@@ -847,6 +847,89 @@ def test_webhook_updates_existing_link(
 
 
 @pytest.mark.django_db
+def test_webhook_logs_new_link(client, event, webhook_settings, confirmed_submission):
+    response = _post_webhook(
+        client,
+        event,
+        _payload(event, confirmed_submission),
+        token=webhook_settings.token,
+    )
+    assert response.status_code == 204
+    with scope(event=event):
+        log = confirmed_submission.logged_actions().get(
+            action_type="pretalx_peertube.link.update"
+        )
+    assert log.event == event
+    assert log.data == {"old_link": None, "link": VALID_VIDEO_URL}
+
+
+@pytest.mark.django_db
+def test_webhook_logs_changed_link(
+    client, event, webhook_settings, confirmed_submission, peertube_link
+):
+    old_link = peertube_link.link
+    response = _post_webhook(
+        client,
+        event,
+        _payload(event, confirmed_submission),
+        token=webhook_settings.token,
+    )
+    assert response.status_code == 204
+    with scope(event=event):
+        log = confirmed_submission.logged_actions().get(
+            action_type="pretalx_peertube.link.update"
+        )
+    assert log.data == {"old_link": old_link, "link": VALID_VIDEO_URL}
+
+
+@pytest.mark.django_db
+def test_webhook_same_link_is_not_logged(
+    client, event, webhook_settings, confirmed_submission
+):
+    payload = _payload(event, confirmed_submission)
+    for _attempt in range(2):
+        response = _post_webhook(client, event, payload, token=webhook_settings.token)
+        assert response.status_code == 204
+    with scope(event=event):
+        logs = confirmed_submission.logged_actions().filter(
+            action_type="pretalx_peertube.link.update"
+        )
+        assert logs.count() == 1
+
+
+@pytest.mark.django_db
+def test_webhook_disabled_peertube_is_not_logged(
+    client, event, webhook_settings, confirmed_submission
+):
+    response = _post_webhook(
+        client,
+        event,
+        _payload(event, confirmed_submission, enabled=False),
+        token=webhook_settings.token,
+    )
+    assert response.status_code == 204
+    with scope(event=event):
+        assert not confirmed_submission.logged_actions().filter(
+            action_type="pretalx_peertube.link.update"
+        )
+
+
+@pytest.mark.django_db
+def test_activitylog_display(event, webhook_settings, confirmed_submission, client):
+    _post_webhook(
+        client,
+        event,
+        _payload(event, confirmed_submission),
+        token=webhook_settings.token,
+    )
+    with scope(event=event):
+        log = confirmed_submission.logged_actions().get(
+            action_type="pretalx_peertube.link.update"
+        )
+        assert str(log.display) == "The Peertube link was changed."
+
+
+@pytest.mark.django_db
 def test_webhook_only_get_rejected(client, event, webhook_settings):
     url = reverse(WEBHOOK_URL_NAME, kwargs={"event": event.slug})
     response = client.get(url, HTTP_AUTHORIZATION=webhook_settings.token)
