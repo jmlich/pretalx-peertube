@@ -27,8 +27,8 @@ The Plugin supplies an API at ``/api/events/<event>/p/peertube/`` that returns a
        "results": [
            {
                "submission": "DPC6RT",
-               "peertube_link": "https://peertube.example.org/w/AAAAAB",
-               "link": "https://peertube.example.org/w/AAAAAB"
+               "peertube_link": "https://vhsky.cz/w/gNAiHGp2CXdb1HBH7X6FBh",
+               "link": "https://vhsky.cz/w/gNAiHGp2CXdb1HBH7X6FBh"
            },
        ]
    }
@@ -39,8 +39,8 @@ A detail view for specific submissions is available at ``/api/events/<event>/p/p
 
    {
        "submission": "DPC6RT",
-       "peertube_link": "https://peertube.example.org/w/AAAAAB",
-       "link": "https://peertube.example.org/w/AAAAAB"
+       "peertube_link": "https://vhsky.cz/w/gNAiHGp2CXdb1HBH7X6FBh",
+       "link": "https://vhsky.cz/w/gNAiHGp2CXdb1HBH7X6FBh"
    }
 
 Writing data
