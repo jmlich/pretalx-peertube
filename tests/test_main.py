@@ -45,9 +45,7 @@ def test_reviewer_cannot_access_settings(review_client, event):
 
 @pytest.mark.django_db
 def test_peertube_link_properties(peertube_link):
-    assert (
-        peertube_link.player_link == "https://peertube.com/videos/embed/dQw4w9WgXcQ"
-    )
+    assert peertube_link.player_link == "https://peertube.com/videos/embed/dQw4w9WgXcQ"
     assert peertube_link.peertube_link == "https://peertube.com/w/dQw4w9WgXcQ"
     assert "iframe" in peertube_link.iframe
     assert peertube_link.player_link in peertube_link.iframe
@@ -64,7 +62,6 @@ def test_peertube_link_iframe_escapes_video_id(confirmed_submission):
         )
     iframe = link.iframe
     assert "<b>" not in iframe
-    
 
 
 @pytest.mark.parametrize(
@@ -127,7 +124,10 @@ def test_url_form_with_existing_link(event, slot, peertube_link):
 @pytest.mark.parametrize(
     ("url", "expected_link"),
     (
-        ("https://www.peertube.com/watch?v=dQw4w9WgXcQ", "https://www.peertube.com/watch?v=dQw4w9WgXcQ"),
+        (
+            "https://www.peertube.com/watch?v=dQw4w9WgXcQ",
+            "https://www.peertube.com/watch?v=dQw4w9WgXcQ",
+        ),
         ("https://youtu.be/dQw4w9WgXcQ", "https://youtu.be/dQw4w9WgXcQ"),
         (
             "https://youtu.be/dQw4w9WgXcQ?list=PLmfWO7gH1WEvXcXh0KOA3tDmG13Kn10fO",
@@ -137,8 +137,14 @@ def test_url_form_with_existing_link(event, slot, peertube_link):
             "https://www.peertube.com/watch?v=dQw4w9WgXcQ&list=PLmfWO7gH1WEvXcXh0KOA",
             "dQw4w9WgXcQ",
         ),
-        ("https://www.peertube.com/embed/dQw4w9WgXcQ", "https://www.peertube.com/embed/dQw4w9WgXcQ"),
-        ("https://www.peertube.com/shorts/dQw4w9WgXcQ", "https://www.peertube.com/shorts/dQw4w9WgXcQ"),
+        (
+            "https://www.peertube.com/embed/dQw4w9WgXcQ",
+            "https://www.peertube.com/embed/dQw4w9WgXcQ",
+        ),
+        (
+            "https://www.peertube.com/shorts/dQw4w9WgXcQ",
+            "https://www.peertube.com/shorts/dQw4w9WgXcQ",
+        ),
     ),
 )
 def test_url_form_clean_valid(event, slot, url, expected_link):
@@ -150,10 +156,7 @@ def test_url_form_clean_valid(event, slot, url, expected_link):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "url",
-    ("https://www.peertube.com/", "https://youtu.be/"),
-)
+@pytest.mark.parametrize("url", ("https://www.peertube.com/", "https://youtu.be/"))
 def test_url_form_clean_invalid_url(event, slot, url):
     code = slot.submission.code
     with scope(event=event):
@@ -181,7 +184,10 @@ def test_url_form_save_creates_link(event, slot):
         assert form.is_valid()
         form.save()
     assert PeertubeLink.objects.filter(submission=slot.submission).exists()
-    assert PeertubeLink.objects.get(submission=slot.submission).link == "https://www.peertube.com/watch?v=abc123"
+    assert (
+        PeertubeLink.objects.get(submission=slot.submission).link
+        == "https://www.peertube.com/watch?v=abc123"
+    )
 
 
 @pytest.mark.django_db
@@ -239,7 +245,9 @@ def test_post_invalid_manual_url(orga_client, event, slot):
 def test_upload_json_file(orga_client, event, slot):
     url = reverse(SETTINGS_URL_NAME, kwargs={"event": event.slug})
     code = slot.submission.code
-    data = json.dumps([{"submission": code, "link": "https://peertube.com/watch?v=jsonvid1"}])
+    data = json.dumps(
+        [{"submission": code, "link": "https://peertube.com/watch?v=jsonvid1"}]
+    )
     upload = SimpleUploadedFile(
         "data.json", data.encode(), content_type="application/json"
     )
@@ -309,9 +317,7 @@ def test_api_list(api_client, event, peertube_link):
     data = response.json()
     assert data["count"] == 1
     assert data["results"][0]["link"] == "https://peertube.com/watch?v=dQw4w9WgXcQ"
-    assert (
-        data["results"][0]["peertube_link"] == "https://peertube.com/w/dQw4w9WgXcQ"
-    )
+    assert data["results"][0]["peertube_link"] == "https://peertube.com/w/dQw4w9WgXcQ"
 
 
 @pytest.mark.django_db
@@ -327,7 +333,10 @@ def test_api_detail(api_client, event, peertube_link):
 def test_api_create(api_client, event, confirmed_submission):
     response = api_client.post(
         f"/api/events/{event.slug}/p/peertube/",
-        data={"submission": confirmed_submission.code, "link": "https://peertube.com/watch?v=newvid123"},
+        data={
+            "submission": confirmed_submission.code,
+            "link": "https://peertube.com/watch?v=newvid123",
+        },
         format="json",
     )
     assert response.status_code == 201
@@ -359,18 +368,27 @@ def test_api_create_duplicate_updates(api_client, event, peertube_link):
     )
     assert response.status_code == 201
     assert PeertubeLink.objects.filter(submission__code=code).count() == 1
-    assert PeertubeLink.objects.get(submission__code=code).link == "https://peertube.com/watch?v=replaced"
+    assert (
+        PeertubeLink.objects.get(submission__code=code).link
+        == "https://peertube.com/watch?v=replaced"
+    )
 
 
 @pytest.mark.django_db
 def test_api_create_strips_url_from_video_id(api_client, event, confirmed_submission):
     response = api_client.post(
         f"/api/events/{event.slug}/p/peertube/",
-        data={"submission": confirmed_submission.code, "link": "https://peertube.com/watch?v=abc123"},
+        data={
+            "submission": confirmed_submission.code,
+            "link": "https://peertube.com/watch?v=abc123",
+        },
         format="json",
     )
     assert response.status_code == 201
-    assert PeertubeLink.objects.get(submission=confirmed_submission).link == "https://peertube.com/watch?v=abc123"
+    assert (
+        PeertubeLink.objects.get(submission=confirmed_submission).link
+        == "https://peertube.com/watch?v=abc123"
+    )
 
 
 @pytest.mark.django_db
@@ -387,7 +405,12 @@ def test_api_create_rejects_invalid_video_id(api_client, event, confirmed_submis
 
 @pytest.mark.django_db
 def test_api_bulk_import_json(api_client, event, confirmed_submission):
-    data = [{"submission": confirmed_submission.code, "link": "https://peertube.com/watch?v=bulkvid1"}]
+    data = [
+        {
+            "submission": confirmed_submission.code,
+            "link": "https://peertube.com/watch?v=bulkvid1",
+        }
+    ]
     response = api_client.post(
         f"/api/events/{event.slug}/p/peertube/import/", data=data, format="json"
     )

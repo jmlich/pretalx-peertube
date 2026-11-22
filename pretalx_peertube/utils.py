@@ -16,7 +16,7 @@ def extract_video_id(url):
     parsed = urlparse(url)
     if not parsed.netloc:
         return None
-        
+
     qs = parse_qs(parsed.query)
     if "v" in qs:
         video_id = qs["v"][0]
@@ -27,11 +27,11 @@ def extract_video_id(url):
         video_id = path_parts[-1]
     else:
         return None
-        
+
     if len(video_id) > 64:
         return None
-        
+
     if not VIDEO_ID_RE.match(video_id):
         return None
-        
+
     return video_id

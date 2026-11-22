@@ -20,7 +20,8 @@ def peertube_settings(sender, request, **kwargs):
         {
             "label": "Peertube",
             "url": reverse(
-                "plugins:pretalx_peertube:settings", kwargs={"event": request.event.slug}
+                "plugins:pretalx_peertube:settings",
+                kwargs={"event": request.event.slug},
             ),
             "active": request.resolver_match.url_name
             == "plugins:pretalx_peertube:settings",

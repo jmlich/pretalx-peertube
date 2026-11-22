@@ -8,7 +8,7 @@ from pretalx.api.permissions import ApiPermission, PluginPermission
 from pretalx.submission.models import Submission
 
 from .models import PeertubeLink
-from .utils import VIDEO_ID_RE
+from .utils import extract_video_id
 
 
 class PeertubeLinkSerializer(serializers.ModelSerializer):
@@ -47,7 +47,6 @@ class PeertubeLinkWriteSerializer(PeertubeLinkSerializer):
             self.fields["submission"].queryset = self.event.submissions.all()
 
     def validate_link(self, value):
-        from .utils import extract_video_id
         if not extract_video_id(value):
             raise serializers.ValidationError("This is not a valid Peertube URL.")
         return value
