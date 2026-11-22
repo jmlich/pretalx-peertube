@@ -1,13 +1,14 @@
-Youtube integration
-===================
+Peertube integration
+====================
 
 .. image:: https://img.shields.io/pypi/v/pretalx-peertube.svg
    :target: https://pypi.org/project/pretalx-peertube/
    :alt: PyPI version
 
-This is a plugin for `pretalx`_ that provides an integration with Youtube, allowing you to embed recordings on talk pages.
+This is a plugin for `pretalx`_ that provides an integration with Peertube, allowing you to embed recordings on talk
+pages. It is a fork of `pretalx-youtube`_.
 
-.. image:: https://github.com/pretalx/pretalx-peertube/blob/main/assets/screenshot.png?raw=true
+.. image:: https://github.com/jmlich/pretalx-peertube/blob/main/assets/screenshot.png?raw=true
 
 API
 ---
@@ -15,7 +16,7 @@ API
 Reading data
 ~~~~~~~~~~~~
 
-The Plugin supplies an API at ``/api/events/<event>/p/peertube/`` that returns all configured Youtube URLs:
+The Plugin supplies an API at ``/api/events/<event>/p/peertube/`` that returns all configured Peertube URLs:
 
 .. code:: json
 
@@ -26,8 +27,8 @@ The Plugin supplies an API at ``/api/events/<event>/p/peertube/`` that returns a
        "results": [
            {
                "submission": "DPC6RT",
-               "peertube_link": "https://peertube.com/watch?v=AAAAAB",
-               "video_id": "AAAAAB"
+               "peertube_link": "https://peertube.example.org/w/AAAAAB",
+               "link": "https://peertube.example.org/w/AAAAAB"
            },
        ]
    }
@@ -38,20 +39,20 @@ A detail view for specific submissions is available at ``/api/events/<event>/p/p
 
    {
        "submission": "DPC6RT",
-       "peertube_link": "https://peertube.com/watch?v=AAAAAB",
-       "video_id": "AAAAAB"
+       "peertube_link": "https://peertube.example.org/w/AAAAAB",
+       "link": "https://peertube.example.org/w/AAAAAB"
    }
 
 Writing data
 ~~~~~~~~~~~~
 
 You can use ``POST`` requests against the list endpoint and ``PATCH`` or ``PUT`` requests against the detail endpoint to
-create or update Youtube links. The ``video_id`` field is required, as is the ``submission`` field unless you are using
+create or update Peertube links. The ``link`` field is required, as is the ``submission`` field unless you are using
 ``PATCH``. The ``submission`` field must be the code of an existing submission, and the API will take care of updating
 existing links if you use ``POST``, so it's safe to just always ``POST`` to the list endpoint.
 
 You can also **bulk import** data in either JSON or CSV format. The JSON format is the same as the one used by the API,
-and the CSV format is a simple CSV file with a header row containing the fields ``submission`` and ``video_id``. You can
+and the CSV format is a simple CSV file with a header row containing the fields ``submission`` and ``link``. You can
 upload the file to ``/api/events/<event>/p/peertube/import/`` using a ``POST`` request with the file as the body.
 (For JSON, you can also instead put the data in the request body.)
 
@@ -68,6 +69,9 @@ webhook URL and a freshly-generated token. In your voctopublish ticket,
 configure the webhook URL and set the webhook *password* (``webhook_pass``)
 to the token — leave the username empty so voctopublish uses the
 ``Authorization`` header. Always use HTTPS to protect the token in transit.
+
+Each new or changed link is logged as ``pretalx_peertube.link.update`` in the session history, so other plugins can
+react to it.
 
 The token is a shared secret. Anyone who knows it can set Peertube links on
 your sessions, so keep it private. Use the *Generate new token* button in
@@ -137,10 +141,13 @@ License
 
 Copyright 2021 Tobias Kunze
 
+Copyright 2026 Jozef Mlich
+
 Released under the terms of the Apache License 2.0
 
 
 .. _pretalx: https://github.com/pretalx/pretalx
+.. _pretalx-youtube: https://github.com/pretalx/pretalx-youtube
 .. _pretalx development setup: https://docs.pretalx.org/en/latest/developer/setup.html
 .. _just: https://just.systems/
 .. _uv: https://docs.astral.sh/uv/

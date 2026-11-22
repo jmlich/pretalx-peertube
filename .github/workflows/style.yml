@@ -4,13 +4,13 @@ on:
   push:
     branches: [ main ]
     paths-ignore:
-      - 'pretalx_youtube/locale/**'
-      - 'pretalx_youtube/static/**'
+      - 'pretalx_peertube/locale/**'
+      - 'pretalx_peertube/static/**'
   pull_request:
     branches: [ main ]
     paths-ignore:
-      - 'pretalx_youtube/locale/**'
-      - 'pretalx_youtube/static/**'
+      - 'pretalx_peertube/locale/**'
+      - 'pretalx_peertube/static/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}

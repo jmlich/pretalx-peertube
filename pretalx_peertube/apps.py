@@ -10,7 +10,7 @@ class PluginApp(AppConfig):
 
     class PretalxPluginMeta:
         name = gettext_lazy("Peertube integration")
-        author = "Tobias Kunze"
+        author = "Tobias Kunze, Jozef Mlich"
         description = gettext_lazy(
             "Show Peertube videos embedded on talk pages. Set URLs manually or via API."
         )

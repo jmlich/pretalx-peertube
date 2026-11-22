@@ -7,9 +7,10 @@ license = {text = "Apache Software License"}
 keywords = ["pretalx"]
 authors = [
   {name = "Tobias Kunze", email = "r@rixx.de"},
+  {name = "Jozef Mlich", email = "jmlich83@gmail.com"},
 ]
 maintainers = [
-  {name = "Tobias Kunze", email = "r@rixx.de"},
+  {name = "Jozef Mlich", email = "jmlich83@gmail.com"},
 ]
 
 requires-python = ">=3.11"
@@ -25,8 +26,8 @@ dev = [
 ]
 
 [project.urls]
-homepage = "https://github.com/pretalx/pretalx-peertube"
-repository = "https://github.com/pretalx/pretalx-peertube.git"
+homepage = "https://github.com/jmlich/pretalx-peertube"
+repository = "https://github.com/jmlich/pretalx-peertube.git"
 
 [project.entry-points."pretalx.plugin"]
 pretalx_peertube = "pretalx_peertube:PretalxPluginMeta"
